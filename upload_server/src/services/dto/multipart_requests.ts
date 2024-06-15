@@ -1,4 +1,4 @@
-import { IsString } from "class-validator";
+import { IsNumber, IsString } from "class-validator";
 
 class UploadRequest {
   @IsString()
@@ -8,6 +8,7 @@ class UploadRequest {
 class UploadChunkRequest {
   @IsString()
   filename: string;
+  @IsNumber()
   chunkIndex: number;
   uploadId: string;
 }
