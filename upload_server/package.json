@@ -23,8 +23,11 @@
   "dependencies": {
     "@types/helmet": "^4.0.0",
     "async": "3.2.2",
+    "aws-sdk": "^2.1642.0",
     "bcrypt-nodejs": "0.0.3",
     "body-parser": "1.19.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
     "compression": "1.7.4",
     "connect-mongo": "4.4.0",
     "cors": "^2.8.5",
