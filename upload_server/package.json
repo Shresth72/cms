@@ -23,8 +23,11 @@
   "dependencies": {
     "@types/helmet": "^4.0.0",
     "async": "3.2.2",
+    "aws-sdk": "^2.1642.0",
     "bcrypt-nodejs": "0.0.3",
     "body-parser": "1.19.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
     "compression": "1.7.4",
     "connect-mongo": "4.4.0",
     "cors": "^2.8.5",
@@ -35,6 +38,7 @@
     "helmet": "^7.1.0",
     "lodash": "^4.17.21",
     "mongoose": "^8.4.1",
+    "multer": "^1.4.5-lts.1",
     "nodemailer": "6.6.1"
   },
   "devDependencies": {
@@ -52,6 +56,7 @@
     "@types/express-session": "1.17.3",
     "@types/jest": "^26.0.23",
     "@types/lodash": "^4.14.170",
+    "@types/multer": "^1.4.11",
     "@types/node": "^14.18",
     "@types/nodemailer": "6.4.0",
     "@types/request": "2.48.5",
