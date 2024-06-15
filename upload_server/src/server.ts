@@ -8,7 +8,6 @@ import kafkaRouter from "./routes/kafka.route";
 
 const port = process.env.PORT || 8080;
 
-<<<<<<< Updated upstream
 const StartServer = async () => {
   dotenv.config();
 
@@ -41,20 +40,18 @@ const StartServer = async () => {
 };
 
 StartServer();
-=======
 const app = express();
 app.use(
-    cors({
-        allowedHeaders: ["*"],
-        origin: "*",
-    })
+  cors({
+    allowedHeaders: ["*"],
+    origin: "*",
+  }),
 );
 
 app.get("/", (req, res) => {
-    res.send("Hello ");
+  res.send("Hello ");
 });
 
 app.listen(port, () => {
-    console.log(`Server listening on ${port}`);
+  console.log(`Server listening on ${port}`);
 });
->>>>>>> Stashed changes
