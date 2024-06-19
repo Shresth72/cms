@@ -2,4 +2,6 @@ node_modules
 !jest.config.js
 *.d.ts
 
+.env
+
 go_server
