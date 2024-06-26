@@ -15,6 +15,7 @@ type MetadataModel struct {
 
 type Metadata struct {
 	ID          int    `json:"id"`
+  Key         string `json:"key"`
 	Title       string `json:"title"`
 	Description string `json:"desc"`
 	Url         string `json:"url"`
@@ -31,13 +32,14 @@ func VerifyMetadata(v *utils.Validator, metadata *Metadata) {
 
 // repository functions
 func (m *MetadataModel) CreateFile(metadata *Metadata) error {
-  query := `INSERT INTO metadata (title, desc, author) VALUES ($1, $2, $3, $4) RETURNING id, title, created_at`
+  query := `INSERT INTO metadata (key, title, desc, author, url) VALUES ($1, $2, $3, $4, $5) RETURNING id, title, created_at`
 
   ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
   defer cancel()
 
-  args := []any{metadata.Title, metadata.Description, metadata.Author}
+  args := []any{metadata.Key, metadata.Title, metadata.Description, metadata.Author, metadata.Url}
 
+  // Returning
   err := m.db.QueryRowContext(ctx, query, args...).Scan(
     &metadata.ID, 
     &metadata.Title, 

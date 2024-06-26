@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/IBM/sarama"
 	"github.com/Shresth72/server/internals/data"
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
@@ -31,11 +32,19 @@ type application struct {
 			googleClientSecret string
 			redirectURL        string
 		}
+		kafka struct {
+			brokers []string
+			topic   string
+      version string
+		}
 	}
-	logger *zerolog.Logger
-	models *data.Models
-	redis  *redis.Client
-	oauth  *oauth2.Config
+	logger      *zerolog.Logger
+	models      *data.Models
+	redis       *redis.Client
+	oauth       *oauth2.Config
+	producer    sarama.SyncProducer
+	logproducer sarama.AsyncProducer
+	consumer    sarama.Consumer
 }
 
 func main() {
@@ -57,6 +66,9 @@ func main() {
 	app.cfg.oauth.googleClientID = os.Getenv("GOOGLE_CLIENT_ID")
 	app.cfg.oauth.googleClientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
 	app.cfg.oauth.redirectURL = os.Getenv("REDIRECT_URL")
+	app.cfg.kafka.brokers = []string{os.Getenv("KAFKA_BROKER")}
+	app.cfg.kafka.topic = os.Getenv("KAFKA_TOPIC")
+  app.cfg.kafka.version = sarama.DefaultVersion.String()
 
 	// DB
 	db, err := connectDB(&app)
@@ -68,6 +80,7 @@ func main() {
 	app.models = data.NewModels(db)
 
 	// Redis (store Refresh Tokens)
+	// However, Generating New Token using RefreshToken not implemented
 	app.redis, err = connectRedis()
 	if err != nil {
 		logger.Panic().Err(err).Msg("failed to initialize redis connection")
@@ -83,6 +96,17 @@ func main() {
 		Scopes: []string{"https://www.googleapis.com/auth/userinfo.profile",
 			"https://www.googleapis.com/auth/userinfo.email"},
 	}
+
+  // Kafka
+  version, err := sarama.ParseKafkaVersion(*&app.cfg.kafka.version)
+  if err != nil {
+		logger.Panic().Err(err).Msg("wrong kafka version")
+  }
+
+  app.producer = app.newDataCollector(app.cfg.kafka.brokers, version)
+  defer app.producer.Close()
+  // app.logproducer = app.newLogProducer(app.cfg.kafka.brokers, version)
+  // defer app.logproducer.Close()
 
 	// Server
 	logger.Info().Msg(fmt.Sprintf("Server starting at port: %d", app.cfg.port))

@@ -57,7 +57,6 @@ type getNewAccessToken struct {
 }
 
 // Currently not implementing for security reasons
-// Currently only using user_id for requestimg, so potentially exploitable
 func (app *application) getNewAccessToken(w http.ResponseWriter, r *http.Request) {
 	var body getNewAccessToken
 	err := app.readJSON(w, r, &body)
@@ -90,7 +89,7 @@ func (app *application) getNewAccessToken(w http.ResponseWriter, r *http.Request
 			app.serverError(w, r, err, "failed to update refresh token")
 			return
 		}
-	}
+}
 
 	userInfo, err := GetUserInfo(newToken.AccessToken)
 	if err != nil {
