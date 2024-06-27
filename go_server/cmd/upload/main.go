@@ -9,6 +9,7 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/Shresth72/server/internals/data"
+	"github.com/Shresth72/server/internals/utils"
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
@@ -52,7 +53,7 @@ func main() {
 	var app application
 
 	// Logger
-	var logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
+  logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 	app.logger = &logger
 
 	err := godotenv.Load()
@@ -62,7 +63,7 @@ func main() {
 	}
 
 	// Config
-	app.cfg.port = GetEnvInt("PORT", 8000)
+	app.cfg.port = utils.GetEnvInt("PORT", 8000)
 	app.cfg.db.conn = os.Getenv("DATABASE_URL")
 	app.cfg.oauth.googleClientID = os.Getenv("GOOGLE_CLIENT_ID")
 	app.cfg.oauth.googleClientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")

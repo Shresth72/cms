@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Shresth72/server/internals/data"
+	"github.com/Shresth72/server/internals/utils"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
@@ -29,13 +30,13 @@ type CompleteMultipartRequest struct {
 
 func (app *application) initMultipartUpload(w http.ResponseWriter, r *http.Request) {
 	var body InitMultipartRequest
-	err := app.readJSON(w, r, &body)
+	err := utils.ReadJSON(w, r, &body)
 	if err != nil {
 		app.badRequestError(w, r, err)
 		return
 	}
 
-	s3Svc, bucket, key, err := app.initS3Service(body.Filename)
+	s3Svc, bucket, key, err := utils.InitS3Service(body.Filename)
 	if err != nil {
 		app.serverError(w, r, err)
 	}
@@ -53,7 +54,7 @@ func (app *application) initMultipartUpload(w http.ResponseWriter, r *http.Reque
 	}
 	app.logSuccess(r, "Created multipart upload request")
 
-	err = app.writeJSON(w, r, http.StatusOK, envelope{
+	err = utils.WriteJSON(w, r, http.StatusOK, utils.Envelope{
 		"upload_id": resp.UploadId,
 	})
 
@@ -64,7 +65,7 @@ func (app *application) initMultipartUpload(w http.ResponseWriter, r *http.Reque
 
 func (app *application) uploadChunk(w http.ResponseWriter, r *http.Request) {
 	var body UploadChunkRequest
-	err := app.readJSON(w, r, &body)
+	err := utils.ReadJSON(w, r, &body)
 	if err != nil {
 		app.badRequestError(w, r, err)
 		return
@@ -76,7 +77,7 @@ func (app *application) uploadChunk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s3Svc, bucket, key, err := app.initS3Service(body.Filename)
+	s3Svc, bucket, key, err := utils.InitS3Service(body.Filename)
 	if err != nil {
 		app.serverError(w, r, err)
 	}
@@ -108,7 +109,7 @@ func (app *application) uploadChunk(w http.ResponseWriter, r *http.Request) {
 	app.logSuccess(r, "Created multipart upload request")
 
 	w.Header().Set("Etag", *completedPart.ETag)
-	err = app.writeJSON(w, r, http.StatusOK, envelope{
+	err = utils.WriteJSON(w, r, http.StatusOK, utils.Envelope{
 		// "e_tag":       completedPart.ETag,
 		"part_number": completedPart.PartNumber,
 	})
@@ -120,13 +121,13 @@ func (app *application) uploadChunk(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) completeMultipart(w http.ResponseWriter, r *http.Request) {
 	var body CompleteMultipartRequest
-	err := app.readJSON(w, r, &body)
+	err := utils.ReadJSON(w, r, &body)
 	if err != nil {
 		app.badRequestError(w, r, err)
 		return
 	}
 
-	s3Svc, bucket, key, err := app.initS3Service(body.Filename)
+	s3Svc, bucket, key, err := utils.InitS3Service(body.Filename)
 	if err != nil {
 		app.serverError(w, r, err)
 	}
@@ -156,7 +157,7 @@ func (app *application) completeMultipart(w http.ResponseWriter, r *http.Request
 
 	app.logMsgFmt("Completed multipart upload to S3: %s\n", completedResponse.String())
 
-	err = app.writeJSON(w, r, http.StatusCreated, envelope{
+	err = utils.WriteJSON(w, r, http.StatusCreated, utils.Envelope{
 		"msg": "successfully completed multipart upload",
 	})
 	if err != nil {
@@ -181,7 +182,7 @@ func (app *application) completeMultipart(w http.ResponseWriter, r *http.Request
 
   err = app.models.MetadataModel.CreateFile(&details)
   if err != nil {
-    app.serverError(w, r, err, "Could not save details to db, try again")
+    app.serverError(w, r, err, "Video uploaded to S3, buy error saving to database, try again")
     return 
   }
 
@@ -192,7 +193,7 @@ func (app *application) completeMultipart(w http.ResponseWriter, r *http.Request
     return 
   }
 
-  err = app.writeJSON(w, r, http.StatusOK, envelope{
+  err = utils.WriteJSON(w, r, http.StatusOK, utils.Envelope{
 		"message": "Uploaded successfully",
 	})
 	if err != nil {
@@ -200,7 +201,7 @@ func (app *application) completeMultipart(w http.ResponseWriter, r *http.Request
 	}
 }
 
-// Delete with Incomplete Deletion for fast backup
+// Request from client to retry upload to db
 func (app *application) uploadToDb(w http.ResponseWriter, r *http.Request) {
 
 }

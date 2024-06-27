@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Shresth72/server/internals/utils"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -43,7 +44,7 @@ func (app *application) oauthGoogleCallback(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	err = app.writeJSON(w, r, http.StatusCreated, envelope{
+	err = utils.WriteJSON(w, r, http.StatusCreated, utils.Envelope{
 		"signed_token": signedToken,
 	})
 	if err != nil {
@@ -59,7 +60,7 @@ type getNewAccessToken struct {
 // Currently not implementing for security reasons
 func (app *application) getNewAccessToken(w http.ResponseWriter, r *http.Request) {
 	var body getNewAccessToken
-	err := app.readJSON(w, r, &body)
+	err := utils.ReadJSON(w, r, &body)
 	if err != nil {
 		app.badRequestError(w, r, err)
 		return
@@ -103,7 +104,7 @@ func (app *application) getNewAccessToken(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = app.writeJSON(w, r, http.StatusCreated, envelope{
+	err = utils.WriteJSON(w, r, http.StatusCreated, utils.Envelope{
 		"signed_token": signedToken,
 	})
 	if err != nil {

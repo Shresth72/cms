@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/IBM/sarama"
+	"github.com/Shresth72/server/internals/utils"
 )
 
 // Handlers
@@ -14,7 +15,7 @@ type SendMessageRequest struct {
 
 func (app *application) sendMessageToKafka(w http.ResponseWriter, r *http.Request) {
   var body SendMessageRequest
-	err := app.readJSON(w, r, &body)
+	err := utils.ReadJSON(w, r, &body)
 	if err != nil {
 		app.badRequestError(w, r, err)
 		return
@@ -28,7 +29,7 @@ func (app *application) sendMessageToKafka(w http.ResponseWriter, r *http.Reques
     return
   }
 
-	err = app.writeJSON(w, r, http.StatusOK, envelope{
+	err = utils.WriteJSON(w, r, http.StatusOK, utils.Envelope{
 		"message": "message uploaded successfully",
 	})
 
