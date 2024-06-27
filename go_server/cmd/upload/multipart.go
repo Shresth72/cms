@@ -186,9 +186,14 @@ func (app *application) completeMultipart(w http.ResponseWriter, r *http.Request
   }
 
 	// Push for Encoding using Kafka
+  err = app.pushVideoForEncodingToKafka(body.Title, details.Url)
+  if err != nil {
+    app.serverError(w, r, err, "Could not push video for encoding to kafka")
+    return 
+  }
 
   err = app.writeJSON(w, r, http.StatusOK, envelope{
-		"data": details,
+		"message": "Uploaded successfully",
 	})
 	if err != nil {
 		app.serverError(w, r, err)

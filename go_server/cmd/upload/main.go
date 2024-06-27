@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/Shresth72/server/internals/data"
@@ -35,7 +36,7 @@ type application struct {
 		kafka struct {
 			brokers []string
 			topic   string
-      version string
+			version string
 		}
 	}
 	logger      *zerolog.Logger
@@ -68,7 +69,7 @@ func main() {
 	app.cfg.oauth.redirectURL = os.Getenv("REDIRECT_URL")
 	app.cfg.kafka.brokers = []string{os.Getenv("KAFKA_BROKER")}
 	app.cfg.kafka.topic = os.Getenv("KAFKA_TOPIC")
-  app.cfg.kafka.version = sarama.DefaultVersion.String()
+	app.cfg.kafka.version = sarama.DefaultVersion.String()
 
 	// DB
 	db, err := connectDB(&app)
@@ -97,21 +98,27 @@ func main() {
 			"https://www.googleapis.com/auth/userinfo.email"},
 	}
 
-  // Kafka
-  version, err := sarama.ParseKafkaVersion(*&app.cfg.kafka.version)
-  if err != nil {
+	// Kafka
+	version, err := sarama.ParseKafkaVersion(*&app.cfg.kafka.version)
+	if err != nil {
 		logger.Panic().Err(err).Msg("wrong kafka version")
-  }
+	}
 
-  app.producer = app.newDataCollector(app.cfg.kafka.brokers, version)
-  defer app.producer.Close()
-  // app.logproducer = app.newLogProducer(app.cfg.kafka.brokers, version)
-  // defer app.logproducer.Close()
+	app.producer = app.newDataCollector(app.cfg.kafka.brokers, version)
+	app.logproducer = app.newLogProducer(app.cfg.kafka.brokers, version)
+	defer app.producer.Close()
+	defer app.logproducer.Close()
 
 	// Server
 	logger.Info().Msg(fmt.Sprintf("Server starting at port: %d", app.cfg.port))
 	logger.Panic().Err(app.Serve())
 }
+
+// ----
+// ------
+// ------- Connect to Services Functions --------
+// ------
+// ----
 
 func connectDB(app *application) (*sql.DB, error) {
 	db, err := sql.Open("postgres", app.cfg.db.conn)
@@ -137,4 +144,48 @@ func connectRedis() (*redis.Client, error) {
 	}
 
 	return conn, nil
+}
+
+func (app *application) newDataCollector(brokerList []string, version sarama.KafkaVersion) sarama.SyncProducer {
+	config := sarama.NewConfig()
+	config.Version = version
+	config.Producer.RequiredAcks = sarama.WaitForAll // Wait for all in-sync replicas to ack the message
+	// TODO: Increase in-sync replicas with `min.insync.replicas`
+	config.Producer.Retry.Max = 10
+	config.Producer.Return.Successes = true
+
+	// TODO: Add TLS Configuration
+	// tlsConfig := createTlsConfiguration()
+	// if tlsConfig != nil {
+	//   config.Net.TLS.Config = tlsConfig
+	//   config.Net.TLS.Enable = true
+	// }
+
+	producer, err := sarama.NewSyncProducer(brokerList, config)
+	if err != nil {
+		app.logger.Panic().Err(err).Msg("Failed to start Sarama Producer")
+	}
+	return producer
+}
+
+func (app *application) newLogProducer(brokerList []string, version sarama.KafkaVersion) sarama.AsyncProducer {
+	config := sarama.NewConfig()
+	config.Version = version
+	config.Producer.RequiredAcks = sarama.WaitForLocal // only wait for leader to ack
+	config.Producer.Compression = sarama.CompressionSnappy
+	config.Producer.Flush.Frequency = 500 * time.Millisecond
+
+	producer, err := sarama.NewAsyncProducer(brokerList, config)
+	if err != nil {
+		app.logger.Panic().Err(err).Msg("Failed to start Sarama LogProducer")
+	}
+
+	// Log Error if not able to produce messages
+	go func() {
+		for err := range producer.Errors() {
+			app.logger.Err(err).Msg("Failed to write access log entry")
+		}
+	}()
+
+	return producer
 }

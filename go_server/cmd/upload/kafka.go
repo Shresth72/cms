@@ -1,51 +1,79 @@
 package main
 
 import (
-	"time"
+	"encoding/json"
+	"net/http"
 
 	"github.com/IBM/sarama"
 )
 
-func (app *application) newDataCollector(brokerList []string, version sarama.KafkaVersion) sarama.SyncProducer  {
-  config := sarama.NewConfig()
-  config.Version = version
-  config.Producer.RequiredAcks = sarama.WaitForAll // Wait for all in-sync replicas to ack the message
-  // TODO: Increase in-sync replicas with `min.insync.replicas`
-  config.Producer.Retry.Max = 10
-  config.Producer.Return.Successes = true
-
-  // TODO: Add TLS Configuration
-  // tlsConfig := createTlsConfiguration()
-  // if tlsConfig != nil {
-  //   config.Net.TLS.Config = tlsConfig
-  //   config.Net.TLS.Enable = true
-  // }
-  
-  producer, err := sarama.NewSyncProducer(brokerList, config)
-  if err != nil {
-    app.logger.Panic().Err(err).Msg("Failed to start Sarama Producer")
-  }
-  return producer
+// Handlers
+type SendMessageRequest struct {
+	Message string `json:"message"`
 }
 
-func (app *application) newLogProducer(brokerList []string, version sarama.KafkaVersion) sarama.AsyncProducer {
-  config := sarama.NewConfig()
-  config.Version = version
-  config.Producer.RequiredAcks = sarama.WaitForLocal // only wait for leader to ack 
-  config.Producer.Compression = sarama.CompressionSnappy
-  config.Producer.Flush.Frequency = 500 * time.Millisecond
+func (app *application) sendMessageToKafka(w http.ResponseWriter, r *http.Request) {
+  var body SendMessageRequest
+	err := app.readJSON(w, r, &body)
+	if err != nil {
+		app.badRequestError(w, r, err)
+		return
+	}
 
-  producer, err := sarama.NewAsyncProducer(brokerList, config)
+  message := body.Message
+  topic := app.cfg.kafka.topic
+  err = app.produceMessage(topic, message)
   if err != nil {
-    app.logger.Panic().Err(err).Msg("Failed to start Sarama LogProducer")
+    app.serverError(w, r, err, "failed to store data in kafka")
+    return
   }
-  
-  // Log Error if not able to produce messages
-  go func ()  {
-    for err := range producer.Errors() {
-      app.logger.Err(err).Msg("Failed to write access log entry")
-    }
-  }()
 
-  return producer
+	err = app.writeJSON(w, r, http.StatusOK, envelope{
+		"message": "message uploaded successfully",
+	})
+
+	if err != nil {
+		app.serverError(w, r, err)
+	}
+}
+
+// Utils
+type EncodingMessage struct {
+  Title string `json:"title"`
+  Url string `json:"url"`
+}
+
+func (app *application) pushVideoForEncodingToKafka(title string, url string) error {
+  msg := &EncodingMessage{
+    Title: title,
+    Url: url,
+  }
+  messageBytes, err := json.Marshal(msg)
+  if err != nil {
+    return err
+  }
+  message := string(messageBytes)
+
+  topic := app.cfg.kafka.topic
+  err = app.produceMessage(topic, message)
+  if err != nil {
+    return err
+  }
+
+  return nil
+} 
+
+func (app *application) produceMessage(topic, message string) error {
+  msg := &sarama.ProducerMessage{
+    Topic: topic,
+    Value: sarama.StringEncoder(message),
+  }
+
+  partition, offset, err := app.producer.SendMessage(msg)
+  if err != nil {
+    return err
+  }
+
+  app.logger.Info().Msgf("Data is successfully stored with unique identifier %v/%d/%d", topic, partition, offset)
+  return nil
 }
